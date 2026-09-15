@@ -87,7 +87,10 @@
 				<artifactId>maven-compiler-plugin</artifactId>
 				<version>3.3</version>
 				<configuration>
-					<compilerArgument>-parameters</compilerArgument>
+					<compilerArgs>
+						<arg>-parameters</arg>
+						<arg>-proc:full</arg>
+					</compilerArgs>
 					<testCompilerArgument>-parameters</testCompilerArgument>
 					<useIncrementalCompilation>false</useIncrementalCompilation>
 				</configuration>
