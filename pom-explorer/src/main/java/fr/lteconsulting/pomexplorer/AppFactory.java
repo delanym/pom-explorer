@@ -29,6 +29,7 @@ import fr.lteconsulting.pomexplorer.rpccommands.ChangeService;
 import fr.lteconsulting.pomexplorer.rpccommands.GavService;
 import fr.lteconsulting.pomexplorer.rpccommands.ProjectsService;
 import fr.lteconsulting.pomexplorer.rpccommands.RpcServices;
+import fr.lteconsulting.pomexplorer.tools.FilteredGAVs;
 import fr.lteconsulting.pomexplorer.webserver.Message;
 import fr.lteconsulting.pomexplorer.webserver.MessageFactory;
 import fr.lteconsulting.pomexplorer.webserver.RpcMessage;
@@ -263,16 +264,22 @@ public class AppFactory
 
 			if( query != null && query.getRoots() != null )
 			{
+				FilteredGAVs filter = query.getFilter();
+
 				for( Gav root : query.getRoots() )
 				{
 					Set<Relation> relations = tx.relationsRec( root );
 
-					dto.gavs.add( root.toString() );
+					if( filter == null || filter.accept( root ) )
+						dto.gavs.add( root.toString() );
 
 					for( Relation relation : relations )
 					{
 						Gav dSource = tx.sourceOf( relation );
 						Gav dTarget = tx.targetOf( relation );
+
+						if( filter != null && (!filter.accept( dSource ) || !filter.accept( dTarget )) )
+							continue;
 
 						dto.gavs.add( dSource.toString() );
 						dto.gavs.add( dTarget.toString() );

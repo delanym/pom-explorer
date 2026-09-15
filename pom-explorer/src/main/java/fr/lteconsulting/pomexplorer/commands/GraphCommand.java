@@ -43,12 +43,22 @@ public class GraphCommand
 	@Help( "displays an interactive 3d WebGL graph of the projects, limited to dependency tree of the given root gavs" )
 	public void roots( ApplicationSession session, Log log, @Help( "gav filter, can be a comma separated list of filters" ) FilteredGAVs roots )
 	{
+		roots( session, log, roots, null );
+	}
+
+	@Help( "displays an interactive 3d WebGL graph of the projects, limited to dependency tree of the given root gavs, and only showing gavs matching the given filter" )
+	public void roots( ApplicationSession session, Log log,
+			@Help( "gav filter, can be a comma separated list of filters" ) FilteredGAVs roots,
+			@Help( "filters the gavs displayed in the graph, can be a comma separated list of filters" ) FilteredGAVs gavFilter )
+	{
 		String url = "graph.html?session=" + System.identityHashCode( session );
-		url += "&graphQueryId=" + GraphQuery.register( new HashSet<>( roots.getGavs( session.session() ) ) );
+		url += "&graphQueryId=" + GraphQuery.register( new HashSet<>( roots.getGavs( session.session() ) ), gavFilter );
 		log.html( "Root gavs : " );
 		StringBuilder sb = new StringBuilder();
 		roots.getGavs( session.session() ).forEach( root -> sb.append( root + "<br/>" ) );
 		log.html( sb.toString() );
+		if( gavFilter != null )
+			log.html( "Displayed gavs are filtered by '" + gavFilter.getFilterDescription() + "'<br/>" );
 		log.html( "To display the graph, go to : <a href='" + url + "' target='_blank'>" + url + "</a><br/>" );
 	}
 

@@ -3,6 +3,7 @@ package fr.lteconsulting.pomexplorer.tools;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.regex.Pattern;
 import java.util.stream.Collector;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -58,8 +59,40 @@ public class FilteredGAVs
 
 	public boolean accept( Gav gav )
 	{
+		if( filters == null )
+			return false;
+
 		String toSearch = gav.toString().toLowerCase();
-		return Arrays.stream( filters ).anyMatch( filter -> toSearch.contains( filter ) );
+		return Arrays.stream( filters ).anyMatch( filter -> matches( toSearch, filter ) );
+	}
+
+	/**
+	 * A filter without wildcard matches as a substring. The <code>*</code> and
+	 * <code>?</code> wildcards are also supported, so <code>com.traderoot*</code>
+	 * matches every gav whose group id starts with <code>com.traderoot</code>.
+	 */
+	private static boolean matches( String value, String filter )
+	{
+		if( filter.indexOf( '*' ) < 0 && filter.indexOf( '?' ) < 0 )
+			return value.contains( filter );
+
+		StringBuilder regex = new StringBuilder();
+		for( char c : filter.toCharArray() )
+		{
+			switch( c )
+			{
+				case '*':
+					regex.append( ".*" );
+					break;
+				case '?':
+					regex.append( '.' );
+					break;
+				default:
+					regex.append( Pattern.quote( String.valueOf( c ) ) );
+					break;
+			}
+		}
+		return value.matches( regex.toString() );
 	}
 
 	@Override

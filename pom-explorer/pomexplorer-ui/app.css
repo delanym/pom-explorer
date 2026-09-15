@@ -73,6 +73,10 @@ span { font-style: italic; }
 
 .console-input { flex-grow: 0; }
 
+.console-panel .mdl-textfield {
+    width: 100%;
+}
+
 .talk {
     margin-top: 5px;
     margin-bottom: 5px;
