@@ -2,9 +2,9 @@ package fr.lteconsulting.pomexplorer.commands;
 
 import java.util.Set;
 
-import org.jgrapht.alg.ConnectivityInspector;
-import org.jgrapht.alg.CycleDetector;
-import org.jgrapht.alg.StrongConnectivityInspector;
+import org.jgrapht.alg.connectivity.ConnectivityInspector;
+import org.jgrapht.alg.connectivity.KosarajuStrongConnectivityInspector;
+import org.jgrapht.alg.cycle.CycleDetector;
 
 import fr.lteconsulting.pomexplorer.Log;
 import fr.lteconsulting.pomexplorer.ApplicationSession;
@@ -21,7 +21,7 @@ public class StatsCommand
 
 		log.html( "There are " + tx.gavs().size() + " gavs<br/>" );
 
-		StrongConnectivityInspector<Gav, Relation> conn = new StrongConnectivityInspector<>( tx.internalGraph() );
+		KosarajuStrongConnectivityInspector<Gav, Relation> conn = new KosarajuStrongConnectivityInspector<>( tx.internalGraph() );
 		log.html( "There are " + conn.stronglyConnectedSets().size() + " strongly connected components<br/>" );
 
 		ConnectivityInspector<Gav, Relation> ccon = new ConnectivityInspector<>( tx.internalGraph() );

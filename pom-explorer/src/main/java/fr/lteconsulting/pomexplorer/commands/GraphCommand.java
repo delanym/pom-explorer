@@ -7,13 +7,12 @@ import java.util.HashSet;
 import java.util.Set;
 
 import fr.lteconsulting.pomexplorer.graph.relation.*;
-import org.jgrapht.DirectedGraph;
-import org.jgrapht.ext.GraphMLExporter;
-import org.jgrapht.ext.IntegerEdgeNameProvider;
-import org.jgrapht.ext.IntegerNameProvider;
+import org.jgrapht.Graph;
 import org.jgrapht.ext.JGraphXAdapter;
+import org.jgrapht.graph.AsSubgraph;
 import org.jgrapht.graph.DirectedMultigraph;
-import org.jgrapht.graph.DirectedSubgraph;
+import org.jgrapht.nio.IntegerIdProvider;
+import org.jgrapht.nio.graphml.GraphMLExporter;
 
 import com.mxgraph.layout.hierarchical.mxHierarchicalLayout;
 
@@ -80,23 +79,19 @@ public class GraphCommand
 
 		try
 		{
-			GraphMLExporter<Gav, Relation> exporter = new GraphMLExporter<>(
-					new IntegerNameProvider<>(),
-					vertex -> vertex.toString(),
-					new IntegerEdgeNameProvider<>(),
-					edge -> edge.toString()
-			);
+			GraphMLExporter<Gav, Relation> exporter = new GraphMLExporter<>( new IntegerIdProvider<>() );
+			exporter.setEdgeIdProvider( new IntegerIdProvider<>() );
+			exporter.setExportVertexLabels( true );
+			exporter.setExportEdgeLabels( true );
 
-			GraphMLExporter<Repository, RepositoryRelation> repoExporter = new GraphMLExporter<Repository, RepositoryRelation>(
-					new IntegerNameProvider<>(),
-					vertex -> vertex.toString(),
-					new IntegerEdgeNameProvider<>(),
-					edge -> edge.toString()
-			);
+			GraphMLExporter<Repository, RepositoryRelation> repoExporter = new GraphMLExporter<>( new IntegerIdProvider<>() );
+			repoExporter.setEdgeIdProvider( new IntegerIdProvider<>() );
+			repoExporter.setExportVertexLabels( true );
+			repoExporter.setExportEdgeLabels( true );
 
-			DirectedGraph<Gav, Relation> g = tx.internalGraph();
+			Graph<Gav, Relation> g = tx.internalGraph();
 
-			DirectedGraph<Gav, Relation> ng = new DirectedMultigraph<>( Relation.class );
+			Graph<Gav, Relation> ng = new DirectedMultigraph<>( Relation.class );
 			for( Gav gav : g.vertexSet() )
 			{
 				if( gavFilter != null && !gavFilter.accept( gav ) )
@@ -120,7 +115,7 @@ public class GraphCommand
 				}
 			}
 
-			DirectedGraph<Repository, RepositoryRelation> repoGraph = new DirectedMultigraph<Repository, RepositoryRelation>( RepositoryRelation.class );
+			Graph<Repository, RepositoryRelation> repoGraph = new DirectedMultigraph<Repository, RepositoryRelation>( RepositoryRelation.class );
 			for( Gav gav : ng.vertexSet() )
 			{
 				String repoPath = getGAVRepository( session, gav );
@@ -164,12 +159,12 @@ public class GraphCommand
 
 			String graphFileName = "graph-session-" + System.identityHashCode( session ) + "-" + new Date().getTime() + ".graphml";
 			Writer writer = AppFactory.get().webServer().pushFile( graphFileName );
-			exporter.export( writer, ng );
+			exporter.exportGraph( ng, writer );
 			writer.close();
 
 			String graphReposFileName = "graph-repos-session-" + System.identityHashCode( session ) + "-" + new Date().getTime() + ".graphml";
 			writer = AppFactory.get().webServer().pushFile( graphReposFileName );
-			repoExporter.export( writer, repoGraph );
+			repoExporter.exportGraph( repoGraph, writer );
 			writer.close();
 
 			String url = AppFactory.get().webServer().getFileUrl( graphFileName );
@@ -207,7 +202,7 @@ public class GraphCommand
 		if( filter != null )
 			filter = filter.toLowerCase();
 
-		DirectedGraph<Gav, Relation> fullGraph = tx.internalGraph();
+		Graph<Gav, Relation> fullGraph = tx.internalGraph();
 
 		Set<Gav> vertexSubset = new HashSet<>();
 		for( Gav gav : fullGraph.vertexSet() )
@@ -223,7 +218,7 @@ public class GraphCommand
 				edgeSubset.add( r );
 		}
 
-		DirectedSubgraph<Gav, Relation> subGraph = new DirectedSubgraph<>( fullGraph, vertexSubset, edgeSubset );
+		AsSubgraph<Gav, Relation> subGraph = new AsSubgraph<>( fullGraph, vertexSubset, edgeSubset );
 
 		JGraphXAdapter<Gav, Relation> ga = new JGraphXAdapter<>( subGraph );
 
