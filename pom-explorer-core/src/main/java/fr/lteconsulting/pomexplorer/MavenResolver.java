@@ -50,12 +50,21 @@ public class MavenResolver
 		else
 			resolver = Maven.resolver();
 
+		// the MavenWorkingSession is held by the resolver's session container
+		Object sessionContainer = getField( resolver, "sessionContainer" );
+		if( sessionContainer != null )
+			mavenSession = callMethod( sessionContainer, "getMavenWorkingSession" );
+		if( mavenSession == null )
+			mavenSession = callMethod( resolver, "getMavenWorkingSession" );
+		if( mavenSession == null )
+			mavenSession = getField( getField( resolver, "delegate" ), "session" );
+
 		// have the session initialize remote repositories
-		mavenSession = getField( getField( resolver, "delegate" ), "session" );
 		repositories = callMethod( mavenSession, "getRemoteRepositories" );
-		s = getField( mavenSession, "session" );
-		system = getField( mavenSession, "system" );
-		settings = getField(getField(mavenSession, "settingsManager"), "settings");
+		// the session and settings are generated lazily, so use the getters
+		s = callMethod( mavenSession, "getSession" );
+		system = callMethod( mavenSession, "getSystem" );
+		settings = callMethod( mavenSession, "getSettings" );
 		localRepositoryPath = getField( settings, "localRepository" );
 	}
 
@@ -130,9 +139,28 @@ public class MavenResolver
 	@SuppressWarnings( "unchecked" )
 	private <T> T callMethod( Object object, String methodName )
 	{
+		if( object == null )
+			return null;
+
 		try
 		{
-			Method m = object.getClass().getDeclaredMethod( methodName );
+			Method m = null;
+			Class<?> currentClass = object.getClass();
+			while( m == null && currentClass != null )
+			{
+				try
+				{
+					m = currentClass.getDeclaredMethod( methodName );
+				}
+				catch( NoSuchMethodException e )
+				{
+					currentClass = currentClass.getSuperclass();
+				}
+			}
+
+			if( m == null )
+				return null;
+
 			m.setAccessible( true );
 			Object result = m.invoke( object );
 
