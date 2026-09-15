@@ -1,13 +1,17 @@
 package fr.lteconsulting.pomexplorer;
 
 import java.io.File;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Deque;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
-import org.jgrapht.traverse.TopologicalOrderIterator;
+import org.jgrapht.Graph;
 
 import fr.lteconsulting.autothreaded.AutoThreaded;
 import fr.lteconsulting.pomexplorer.graph.PomGraph.PomGraphReadTransaction;
@@ -128,11 +132,7 @@ public class Builder
 
 		try
 		{
-			TopologicalOrderIterator<Gav, Relation> iterator = new TopologicalOrderIterator<>( tx.internalGraph() );
-			List<Gav> gavs = new ArrayList<>();
-			while( iterator.hasNext() )
-				gavs.add( iterator.next() );
-			Collections.reverse( gavs );
+			List<Gav> gavs = buildOrder( tx.internalGraph() );
 
 			StringBuilder sb = new StringBuilder();
 
@@ -172,11 +172,7 @@ public class Builder
 
 		try
 		{
-			TopologicalOrderIterator<Gav, Relation> iterator = new TopologicalOrderIterator<>( tx.internalGraph() );
-			List<Gav> gavs = new ArrayList<>();
-			while( iterator.hasNext() )
-				gavs.add( iterator.next() );
-			Collections.reverse( gavs );
+			List<Gav> gavs = buildOrder( tx.internalGraph() );
 
 			for( Gav gav : gavs )
 			{
@@ -197,6 +193,71 @@ public class Builder
 		}
 
 		return null;
+	}
+
+	/**
+	 * Computes a build order (dependencies first). Contrary to jgrapht's
+	 * {@code TopologicalOrderIterator}, this tolerates cycles in the graph, which can
+	 * legitimately happen in a POM graph.
+	 */
+	private static List<Gav> buildOrder( Graph<Gav, Relation> graph )
+	{
+		List<Gav> order = topologicalOrder( graph );
+		Collections.reverse( order );
+		return order;
+	}
+
+	/**
+	 * Kahn's algorithm. When no vertex is left with a zero in-degree but vertices remain,
+	 * those vertices are part of a cycle : one of them is picked to break the cycle.
+	 */
+	private static List<Gav> topologicalOrder( Graph<Gav, Relation> graph )
+	{
+		Map<Gav, Integer> inDegrees = new HashMap<>();
+		Deque<Gav> ready = new ArrayDeque<>();
+		Set<Gav> remaining = new HashSet<>( graph.vertexSet() );
+
+		for( Gav gav : graph.vertexSet() )
+		{
+			int inDegree = graph.inDegreeOf( gav );
+			inDegrees.put( gav, inDegree );
+			if( inDegree == 0 )
+				ready.add( gav );
+		}
+
+		List<Gav> order = new ArrayList<>( graph.vertexSet().size() );
+
+		while( !remaining.isEmpty() )
+		{
+			Gav next;
+			if( !ready.isEmpty() )
+			{
+				next = ready.poll();
+				if( !remaining.remove( next ) )
+					continue;
+			}
+			else
+			{
+				// remaining vertices belong to a cycle : break it by picking one of them
+				next = remaining.iterator().next();
+				remaining.remove( next );
+			}
+
+			order.add( next );
+
+			for( Relation relation : graph.outgoingEdgesOf( next ) )
+			{
+				Gav target = graph.getEdgeTarget( relation );
+				if( remaining.contains( target ) )
+				{
+					int inDegree = inDegrees.merge( target, -1, Integer::sum );
+					if( inDegree <= 0 )
+						ready.add( target );
+				}
+			}
+		}
+
+		return order;
 	}
 
 	private void processProjectChange( ApplicationSession session, Project project )
